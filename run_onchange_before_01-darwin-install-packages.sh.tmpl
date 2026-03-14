@@ -1,0 +1,31 @@
+#!/bin/bash
+
+{{ if eq .chezmoi.os "darwin" -}}
+set -e
+
+echo "Running macOS specific setup..."
+
+# Check if Homebrew is installed, install if not
+if ! command -v brew &> /dev/null; then
+    echo "Installing Homebrew..."
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    
+    # Optional: ensure brew is in PATH for the rest of the script if running on ARM Mac
+    if [[ -x /opt/homebrew/bin/brew ]]; then
+        eval "$(/opt/homebrew/bin/brew shellenv)"
+    fi
+fi
+
+# Install required packages
+echo "Installing requested tools..."
+brew bundle --no-lock --file=/dev/stdin <<EOF
+brew "awscli"
+brew "fzf"
+brew "gum"
+brew "bat"
+brew "eza"
+brew "jq"
+EOF
+
+echo "Done installing macOS packages."
+{{ end -}}
