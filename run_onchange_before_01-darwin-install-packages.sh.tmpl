@@ -19,13 +19,18 @@ fi
 # Install required packages
 echo "Installing requested tools..."
 brew bundle --no-lock --file=/dev/stdin <<EOF
+tap "turbot/tap"
 brew "awscli"
 brew "fzf"
 brew "gum"
 brew "bat"
 brew "eza"
 brew "jq"
+brew "steampipe"
 EOF
+
+echo "Installing Steampipe plugins..."
+steampipe plugin install aws
 
 echo "Done installing macOS packages."
 {{ end -}}

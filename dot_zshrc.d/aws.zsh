@@ -229,4 +229,58 @@ function awss() {
     done
 
     gum style --foreground 142 --bold "✅ AWS SSO Setup Complete. Run 'awsp' to switch profiles."
+
+    # Generate Steampipe configuration for all the fetched profiles
+    awspipe_config
+}
+
+# Generate Steampipe AWS plugin config
+# Creates connection blocks for all AWS profiles and an aggregator connection
+function awspipe_config() {
+    if ! command -v steampipe >/dev/null 2>&1; then
+        return 0
+    fi
+
+    local spc_file="$HOME/.steampipe/config/aws.spc"
+    mkdir -p "$HOME/.steampipe/config"
+    
+    gum style --foreground 109 "Generating Steampipe AWS plugin config..."
+    
+    local conn_group_name
+    conn_group_name=$(gum input --cursor.foreground="208" --placeholder.foreground="245" --prompt.foreground="109" --placeholder "Steampipe Connection Group (e.g. all)" --value "all" --prompt "Steampipe Connection Group > ")
+    if [[ -z "$conn_group_name" ]]; then
+        conn_group_name="all"
+    fi
+    # Ensure it's a valid steampipe identifier (lowercase, numeric, underscore)
+    conn_group_name=$(echo "$conn_group_name" | tr '[:upper:]' '[:lower:]' | tr -dc 'a-z0-9_')
+    if [[ -z "$conn_group_name" ]]; then
+        conn_group_name="all"
+    fi
+
+    local agg_name="aws_${conn_group_name}"
+
+    # Start fresh config
+    echo "connection \"$agg_name\" {" > "$spc_file"
+    echo '  plugin = "aws"' >> "$spc_file"
+    echo '  type   = "aggregator"' >> "$spc_file"
+    echo "  connections = [\"aws_*\"]" >> "$spc_file"
+    echo '}' >> "$spc_file"
+    echo '' >> "$spc_file"
+    
+    local profiles
+    profiles=$(aws configure list-profiles 2>/dev/null | sort)
+    
+    for p in $profiles; do
+        # Connection name needs to be valid lowercase alphanumeric and underscores
+        local conn_name="aws_${p//-/_}"
+        conn_name=$(echo "$conn_name" | tr -dc 'a-z0-9_')
+        
+        echo "connection \"$conn_name\" {" >> "$spc_file"
+        echo "  plugin  = \"aws\"" >> "$spc_file"
+        echo "  profile = \"$p\"" >> "$spc_file"
+        echo "}" >> "$spc_file"
+        echo "" >> "$spc_file"
+    done
+    
+    gum style --foreground 142 --bold "✅ Steampipe config generated successfully."
 }
