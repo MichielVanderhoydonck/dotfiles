@@ -229,9 +229,6 @@ function awss() {
     done
 
     gum style --foreground 142 --bold "✅ AWS SSO Setup Complete. Run 'awsp' to switch profiles."
-
-    # Generate Steampipe configuration for all the fetched profiles
-    awspipe_config
 }
 
 # Generate Steampipe AWS plugin config
@@ -243,44 +240,53 @@ function awspipe_config() {
 
     local spc_file="$HOME/.steampipe/config/aws.spc"
     mkdir -p "$HOME/.steampipe/config"
-    
+
     gum style --foreground 109 "Generating Steampipe AWS plugin config..."
-    
+
     local conn_group_name
-    conn_group_name=$(gum input --cursor.foreground="208" --placeholder.foreground="245" --prompt.foreground="109" --placeholder "Steampipe Connection Group (e.g. all)" --value "all" --prompt "Steampipe Connection Group > ")
-    if [[ -z "$conn_group_name" ]]; then
-        conn_group_name="all"
-    fi
-    # Ensure it's a valid steampipe identifier (lowercase, numeric, underscore)
+    conn_group_name=$(gum input \
+        --cursor.foreground="208" \
+        --placeholder.foreground="245" \
+        --prompt.foreground="109" \
+        --placeholder "Steampipe Connection Group (e.g. all)" \
+        --value "all" \
+        --prompt "Steampipe Connection Group > ")
+
+    [[ -z "$conn_group_name" ]] && conn_group_name="all"
+
     conn_group_name=$(echo "$conn_group_name" | tr '[:upper:]' '[:lower:]' | tr -dc 'a-z0-9_')
-    if [[ -z "$conn_group_name" ]]; then
-        conn_group_name="all"
-    fi
+    [[ -z "$conn_group_name" ]] && conn_group_name="all"
 
     local agg_name="aws_${conn_group_name}"
 
     # Start fresh config
-    echo "connection \"$agg_name\" {" > "$spc_file"
-    echo '  plugin = "aws"' >> "$spc_file"
-    echo '  type   = "aggregator"' >> "$spc_file"
-    echo "  connections = [\"aws_*\"]" >> "$spc_file"
-    echo '}' >> "$spc_file"
-    echo '' >> "$spc_file"
-    
-    local profiles
-    profiles=$(aws configure list-profiles 2>/dev/null | sort)
-    
-    for p in $profiles; do
-        # Connection name needs to be valid lowercase alphanumeric and underscores
-        local conn_name="aws_${p//-/_}"
-        conn_name=$(echo "$conn_name" | tr -dc 'a-z0-9_')
-        
-        echo "connection \"$conn_name\" {" >> "$spc_file"
-        echo "  plugin  = \"aws\"" >> "$spc_file"
-        echo "  profile = \"$p\"" >> "$spc_file"
-        echo "}" >> "$spc_file"
-        echo "" >> "$spc_file"
+    : > "$spc_file"
+
+    # Generate connections
+    aws configure list-profiles 2>/dev/null | sort | while IFS= read -r p; do
+        [[ -z "$p" ]] && continue
+
+        local conn_name
+        conn_name=$(echo "$p" | tr '[:upper:]-' '[:lower:]_' | tr -dc 'a-z0-9_')
+        conn_name="aws_${conn_name}"
+
+        cat >> "$spc_file" <<EOF
+connection "$conn_name" {
+  plugin  = "aws"
+  profile = "$p"
+}
+
+EOF
     done
-    
+
+    # Add aggregator at the end
+    cat >> "$spc_file" <<EOF
+connection "$agg_name" {
+  plugin      = "aws"
+  type        = "aggregator"
+  connections = ["aws_*"]
+}
+EOF
+
     gum style --foreground 142 --bold "✅ Steampipe config generated successfully."
 }
