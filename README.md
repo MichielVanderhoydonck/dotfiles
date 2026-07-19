@@ -14,7 +14,20 @@ To add configurations, aliases, or functions for a new tool:
 3. Run `chezmoi apply`.
 
 **Existing Modules:**
-- `aws.zsh`: Helper functions for AWS (`awsp` profile switcher, `ecrlogin` Docker helper).
+- `aws.zsh`: Premium interactive AWS helpers using `fzf` and `gum`:
+  - `awsp`: AWS Profile Switcher (exports credentials to env).
+  - `awse`: AWS ECR Login Helper (Docker/Podman login helper).
+  - `awss`: AWS SSO Config Populator (configures and populates SSO accounts/roles).
+  - `awspipe_config`: Steampipe AWS plugin config generator.
+- `git.zsh`: Premium interactive Git helpers using `fzf` and `gum`:
+  - `gsw`: Switch branches with a commit log preview.
+  - `gadd`: Stage or unstage files with interactive side-by-side diffs.
+  - `gcommit`: Guided Conventional Commit wizard.
+  - `gbranch`: Create branches conforming to Conventional Commits branch-prefix standards.
+  - `glog`: Interactive git log browser (press Enter to copy commit SHA).
+  - `gclean`: Clean up local branches safely.
+  - `gstash`: Manage stashes (show, apply, pop, drop).
+  - `gwtl` / `gwta` / `gwtr`: Switch, add, or remove Git worktrees.
 
 ## Usage
 
