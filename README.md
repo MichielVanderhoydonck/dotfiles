@@ -50,3 +50,18 @@ To apply these dotfiles to a new machine using [chezmoi](https://www.chezmoi.io/
    - `chezmoi cd`: Jump to the local chezmoi source repository.
    - `chezmoi diff`: See what changes will be made before applying them.
    - `chezmoi add <file>`: Start tracking a new file in your system with chezmoi.
+
+## Testing
+
+The dotfiles are designed to be cross-platform, supporting both macOS (via Homebrew) and Linux (Ubuntu/Debian-based systems via native package managers and curl setups).
+
+You can run the containerized end-to-end (E2E) test suite to verify the installation scripts and configuration loading on a clean Linux environment:
+
+```bash
+# Build the test image
+docker build -t dotfiles-test -f tests/Dockerfile .
+
+# Run the test suite
+docker run --rm dotfiles-test
+```
+

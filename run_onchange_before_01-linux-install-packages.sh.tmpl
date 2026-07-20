@@ -1,0 +1,85 @@
+#!/bin/bash
+
+{{ if eq .chezmoi.os "linux" -}}
+set -e
+
+echo "Running Linux specific setup..."
+
+# Helper to run commands as root, using sudo if available and we are not root
+run_as_root() {
+    if [ "$(id -u)" -ne 0 ]; then
+        if command -v sudo &> /dev/null; then
+            sudo "$@"
+        else
+            echo "Error: Need root privileges but sudo is not installed." >&2
+            exit 1
+        fi
+    else
+        "$@"
+    fi
+}
+
+# Check for apt-get (Debian/Ubuntu)
+if command -v apt-get &> /dev/null; then
+    echo "Debian/Ubuntu detected. Updating packages and installing prerequisites..."
+    run_as_root apt-get update
+    run_as_root apt-get install -y curl git zsh jq fzf bat unzip wget gnupg
+
+    # Create bat symlink if it installs as batcat (Debian/Ubuntu specific)
+    if command -v batcat &> /dev/null && ! command -v bat &> /dev/null; then
+        run_as_root ln -sf /usr/bin/batcat /usr/local/bin/bat
+    fi
+
+    # Install eza (from official deb repo)
+    if ! command -v eza &> /dev/null; then
+        echo "Installing eza..."
+        run_as_root mkdir -p /etc/apt/keyrings
+        wget -qO- https://raw.githubusercontent.com/eza-community/eza/main/deb.asc | run_as_root gpg --dearmor --yes -o /etc/apt/keyrings/gierens.gpg
+        echo "deb [signed-by=/etc/apt/keyrings/gierens.gpg] http://deb.gierens.de stable main" | run_as_root tee /etc/apt/sources.list.d/gierens.list
+        run_as_root chmod 644 /etc/apt/keyrings/gierens.gpg /etc/apt/sources.list.d/gierens.list
+        run_as_root apt-get update
+        run_as_root apt-get install -y eza || echo "Skipping eza (apt install failed)"
+    fi
+
+    # Install gum
+    if ! command -v gum &> /dev/null; then
+        echo "Installing gum..."
+        run_as_root mkdir -p /etc/apt/keyrings
+        curl -fsSL https://repo.charm.sh/apt/gpg.key | run_as_root gpg --dearmor --yes -o /etc/apt/keyrings/charm.gpg
+        echo "deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *" | run_as_root tee /etc/apt/sources.list.d/charm.list
+        run_as_root apt-get update
+        run_as_root apt-get install -y gum || echo "Skipping gum (apt install failed)"
+    fi
+
+    # Install steampipe
+    if ! command -v steampipe &> /dev/null; then
+        echo "Installing steampipe..."
+        run_as_root /bin/sh -c "$(curl -fsSL https://steampipe.io/install/steampipe.sh)" || echo "Skipping steampipe (script failed)"
+    fi
+
+    # Install AWS CLI v2
+    if ! command -v aws &> /dev/null; then
+        echo "Installing AWS CLI v2..."
+        curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip"
+        unzip -q /tmp/awscliv2.zip -d /tmp
+        run_as_root /tmp/aws/install
+        rm -rf /tmp/awscliv2.zip /tmp/aws
+    fi
+
+else
+    echo "Unsupported Linux package manager. Please install git, zsh, fzf, gum, bat, eza, jq, awscli, and steampipe manually."
+fi
+
+# Install Steampipe plugins as user (not root)
+if command -v steampipe &> /dev/null; then
+    echo "Installing Steampipe plugins..."
+    # Steampipe shouldn't be run as root. Only install plugin if we are not root, or if root, run as standard user if possible.
+    if [ "$(id -u)" -ne 0 ]; then
+        steampipe plugin install aws || echo "Failed to install steampipe aws plugin"
+    else
+        echo "Running as root; skipping steampipe plugin installation (should be installed per-user)."
+    fi
+fi
+
+echo "Done installing Linux packages."
+{{ end -}}
