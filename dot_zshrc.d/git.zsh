@@ -41,7 +41,7 @@ function gsw() {
         --layout=reverse \
         --border \
         --prompt="Git Switch > " \
-        --preview="git log {1} --graph --oneline --color=always --date=short -n 10" \
+        --preview="git log --graph --oneline --color=always --date=short -n 10 \$(echo {} | sed -E 's/^[ *]*//' | cut -d\" \" -f1)" \
         --preview-window="right:60%" \
         --info=inline)
 
@@ -310,7 +310,7 @@ function gclean() {
         --layout=reverse \
         --border \
         --prompt="Clean Branches > " \
-        --preview="git log {} --graph --oneline --color=always -n 10" \
+        --preview="git log --graph --oneline --color=always -n 10 {}" \
         --preview-window="right:60%" \
         --info=inline)
 
